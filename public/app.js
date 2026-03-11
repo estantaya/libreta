@@ -14,75 +14,106 @@ window.addEventListener('offline', () => {
     console.log("Modo Offline: Guardando localmente");
 });
 
-async function guardarProducto(producto) {
-    // 1. Siempre guardamos local primero (para velocidad instantánea)
-    let inventarioLocal = JSON.parse(localStorage.getItem('inventario')) || [];
-    inventarioLocal.push(producto);
-    localStorage.setItem('inventario', JSON.stringify(inventarioLocal));
-
-    // 2. Intentamos guardar en la nube si hay conexión
-    if (estaEnLinea) {
-        try {
-            await fetch('/.netlify/functions/GuardarProducto', {
-                method: 'POST',
-                body: JSON.stringify(producto)
-            });
-            console.log("Sincronizado con la nube");
-        } catch (e) {
-            console.error("Fallo al sincronizar, se quedará local");
-        }
-    } else {
-        console.log("Sin internet: pendiente de sincronización");
-    }
-}
-
-// Guardar producto nuevo
-function guardarProducto() {
-    const nombre = document.getElementById('nuevo-nombre').value;
-    const stock = document.getElementById('nuevo-stock').value;
-    
-    if (nombre && stock) {
-        const nuevoProducto = { 
-            nombre, 
-            cantidad: parseInt(stock), 
-            fecha: new Date(), 
-            urgencia: 'urgencia-verde' 
-        };
-        
-        productos.push(nuevoProducto);
-        // Guardamos en la memoria del navegador
+function eliminarProducto(nombre) {
+    // Filtramos el array para excluir el producto seleccionado
+    const index = productos.findIndex(p => p.nombre === nombre);
+    if (index > -1) {
+        productos.splice(index, 1);
         localStorage.setItem('inventarioLibreta', JSON.stringify(productos));
-        
-        cerrarModal();
         renderizarLista();
     }
 }
 
+// Esta es la UNICA función necesaria para guardar
+async function guardarProducto() {
+    const nombre = document.getElementById('nuevo-nombre').value;
+    const stock = document.getElementById('nuevo-stock').value;
+    
+    if (nombre && stock) {
+		// Cuando creas o modificas un producto:
+		const nuevoProducto = { 
+			id: Date.now(),
+			nombre, 
+			cantidad,
+			fecha: new Date(),
+			sincronizado: false // <--- ¡Esta es la clave!
+		};
+		// 1. Agregar al array en memoria y refrescar UI
+		productos.push(nuevoProducto);
+		renderizarLista();
+		cerrarModal();
+		
+		// 2. Persistir localmente
+		localStorage.setItem('inventarioLibreta', JSON.stringify(productos));
+		
+		// 3. Sincronizar a la nube (si hay conexión)
+		if (navigator.onLine) {
+			try {
+				await fetch('/.netlify/functions/GuardarIndividual', {
+					method: 'POST',
+					body: JSON.stringify(nuevoProducto)
+				});
+				console.log("Sincronizado con la nube");
+			} catch (e) {
+				console.error("Fallo al sincronizar con la nube, quedará local "+e);
+			}
+		} else {
+			console.log("Modo Offline: Guardado solo localmente");
+		}
+    }
+}
+
 // Actualizamos el array para incluir la fecha
+// Asegúrate de que no se repitan por nombre
 const productos = [
     { nombre: "Tomate", cantidad: 5, fecha: new Date('2026-03-01'), urgencia: "urgencia-roja" },
     { nombre: "Repuesto Freno", cantidad: 2, fecha: new Date('2026-03-10'), urgencia: "urgencia-verde" }
 ];
 
-const guardados = localStorage.getItem('inventarioLibreta');
-if (guardados) {
-    productos.push(...JSON.parse(guardados));
-}
+// En lugar de hacer un push directo al array global, recarga desde cero:
+const guardados = JSON.parse(localStorage.getItem('inventarioLibreta')) || [];
+
+guardados.forEach(g => {
+    if (!productos.find(p => p.nombre === g.nombre)) {
+        productos.push(g);
+    }
+});
 
 function renderizarLista() {
-    // Ordenar: el más viejo (menor fecha) primero
+    // 1. Aseguramos que todas las fechas sean objetos Date reales
+    productos.forEach(p => {
+        if (!(p.fecha instanceof Date)) {
+            p.fecha = new Date(p.fecha);
+        }
+    });
+
+    // 2. Ordenar por fecha
     productos.sort((a, b) => a.fecha - b.fecha);
 
     const contenedor = document.getElementById('lista-inventario');
-    contenedor.innerHTML = productos.map(p => `
-        <div class="item ${p.urgencia}">
-            <div>
-                <strong>${p.nombre}</strong><br>
-                <span>Stock: ${p.cantidad} | Ingreso: ${p.fecha.toLocaleDateString()}</span>
-            </div>
-            <button onclick="usarStock('${p.nombre}')">- Usar</button>
+    
+    // 3. Usamos map correctamente
+	contenedor.innerHTML = productos.map(p => `
+    <div class="item ${p.urgencia}">
+        <div>
+            <strong>${p.nombre}</strong><br>
+            <span>Stock: ${p.cantidad} | Ingreso: ${p.fecha.toLocaleDateString()}</span>
         </div>
-    `).join('');
+        <button onclick="sumarStock('${p.nombre}')">+</button>
+        <button onclick="usarStock('${p.nombre}')">-</button>
+        <button onclick="eliminarProducto('${p.nombre}')" style="color: red;">X</button>
+    </div>
+	`).join('');
+}
+
+function eliminarProducto(nombre) {
+    // Filtramos el array para excluir el producto seleccionado
+    const index = productos.findIndex(p => p.nombre === nombre);
+    if (index > -1) {
+        productos.splice(index, 1);
+        localStorage.setItem('inventarioLibreta', JSON.stringify(productos));
+        renderizarLista();
+    }
 }
 
 // Abrir/Cerrar Modal
@@ -94,8 +125,48 @@ function usarStock(nombre) {
     const p = productos.find(item => item.nombre === nombre);
     if (p && p.cantidad > 0) {
         p.cantidad--;
+        p.sincronizado = false; // Marcamos como pendiente de sincronizar
+        
+        // ¡IMPORTANTE! Guardar en localStorage aquí
+        localStorage.setItem('inventarioLibreta', JSON.stringify(productos));
+        
+        renderizarLista();
+    }
+}
+
+function sumarStock(nombre) {
+    const p = productos.find(item => item.nombre === nombre);
+    if (p) {
+        p.cantidad++; // Sumamos uno
+        p.sincronizado = false; // Marcamos para sincronizar
+        
+        // Guardamos el cambio en localStorage
+        localStorage.setItem('inventarioLibreta', JSON.stringify(productos));
         renderizarLista();
     }
 }
 
 renderizarLista();
+
+// Sincronización cada 30 segundos
+setInterval(async () => {
+    if (navigator.onLine) {
+        const inventario = JSON.parse(localStorage.getItem('inventarioLibreta')) || [];
+        const pendientes = inventario.filter(p => p.sincronizado === false);
+
+        if (pendientes.length > 0) {
+            console.log(`Sincronizando ${pendientes.length} cambios...`);
+            
+            // Enviar todos los pendientes de una sola vez
+            await fetch('/.netlify/functions/SincronizarTodo', {
+                method: 'POST',
+                body: JSON.stringify(pendientes)
+            });
+
+            // Marcar como sincronizados localmente
+            pendientes.forEach(p => p.sincronizado = true);
+            localStorage.setItem('inventarioLibreta', JSON.stringify(inventario));
+        }
+    }
+}, 30000); // 30.000 milisegundos
+

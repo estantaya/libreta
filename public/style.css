@@ -20,3 +20,8 @@ header { background: #333; color: white; padding: 1rem; text-align: center; }
 
 #modal-agregar { border-radius: 10px; z-index: 100; }
 #modal-agregar input { width: 100%; margin-bottom: 10px; padding: 10px; }
+
+
+#lista-inventario {
+    padding-bottom: 80px; /* Suficiente espacio para el botón + */
+}

@@ -1,5 +1,5 @@
 [build]
-  command = "echo 'Construyendo Libreta...'"
+  command = "dotnet build netlify/functions/*.csproj"
   publish = "public"
 
 [functions]
