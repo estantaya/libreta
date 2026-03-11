@@ -29,17 +29,19 @@ async function guardarProducto() {
     const nombre = document.getElementById('nuevo-nombre').value;
     const stock = document.getElementById('nuevo-stock').value;
     
-    if (nombre && stock) {
-		// Cuando creas o modificas un producto:
-		const nuevoProducto = { 
-			id: Date.now(),
-			nombre, 
-			cantidad,
-			fecha: new Date(),
-			sincronizado: false // <--- ¡Esta es la clave!
-		};
-		// 1. Agregar al array en memoria y refrescar UI
-		productos.push(nuevoProducto);
+    // Convertimos a número
+    const cantidad = parseInt(stock); 
+    
+    if (nombre && !isNaN(cantidad)) {
+        const nuevoProducto = { 
+            id: Date.now(),
+            nombre, 
+            cantidad, // Ahora la variable 'cantidad' existe y tiene el valor correcto
+            fecha: new Date(),
+            sincronizado: false 
+        };
+        
+        productos.push(nuevoProducto);
 		renderizarLista();
 		cerrarModal();
 		
@@ -49,7 +51,7 @@ async function guardarProducto() {
 		// 3. Sincronizar a la nube (si hay conexión)
 		if (navigator.onLine) {
 			try {
-				await fetch('/.netlify/functions/GuardarIndividual', {
+				await fetch('/.netlify/functions/GuardarProducto', {
 					method: 'POST',
 					body: JSON.stringify(nuevoProducto)
 				});
@@ -89,6 +91,7 @@ function renderizarLista() {
 
     // 2. Ordenar por fecha
     productos.sort((a, b) => a.fecha - b.fecha);
+	
 
     const contenedor = document.getElementById('lista-inventario');
     
@@ -104,6 +107,8 @@ function renderizarLista() {
         <button onclick="eliminarProducto('${p.nombre}')" style="color: red;">X</button>
     </div>
 	`).join('');
+	
+	
 }
 
 function eliminarProducto(nombre) {
