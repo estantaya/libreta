@@ -1,0 +1,22 @@
+body { font-family: sans-serif; margin: 0; background: #f4f4f9; }
+header { background: #333; color: white; padding: 1rem; text-align: center; }
+
+.item {
+    background: white; padding: 15px; margin: 10px; border-radius: 8px;
+    display: flex; justify-content: space-between; align-items: center;
+    border-left: 5px solid #ccc; /* Aquí cambiaremos el color según urgencia */
+}
+
+/* Clases para el semáforo */
+.urgencia-roja { border-left-color: #ff4d4d; }
+.urgencia-amarilla { border-left-color: #ffcc00; }
+.urgencia-verde { border-left-color: #2ecc71; }
+
+#btn-agregar {
+    position: fixed; bottom: 20px; right: 20px;
+    width: 60px; height: 60px; border-radius: 50%;
+    background: #3498db; color: white; font-size: 30px; border: none;
+}
+
+#modal-agregar { border-radius: 10px; z-index: 100; }
+#modal-agregar input { width: 100%; margin-bottom: 10px; padding: 10px; }
