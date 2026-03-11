@@ -1,0 +1,21 @@
+{
+	"geolocation": {
+		"data": {
+			"city": "Pilar",
+			"country": {
+				"code": "AR",
+				"name": "Argentina"
+			},
+			"subdivision": {
+				"code": "B",
+				"name": "Buenos Aires"
+			},
+			"timezone": "America/Argentina/Buenos_Aires",
+			"latitude": -34.4836,
+			"longitude": -58.9319,
+			"postalCode": "1629"
+		},
+		"timestamp": 1773219108315
+	},
+	"siteId": "f890fa62-2814-477b-bc0c-95edb129aa4c"
+}
